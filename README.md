@@ -9,6 +9,7 @@ pip install -r requirements.txt
 docker compose up
 ```
 
+
 ## Запуcк
 Создать файл .env
 ```
@@ -23,9 +24,8 @@ DB_PASSWORD=example
 ```
 python create_db.py
 ```
-
-```
 Запустите парсер
+
 ```
 python async_main.py
 ```
