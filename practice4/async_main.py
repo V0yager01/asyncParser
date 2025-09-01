@@ -41,7 +41,7 @@ def create_shemas(parsed_xls) -> list[TradingShema]:
 async def gen_page_links(xls, page_number):
     for number in range(1, page_number+1):
         print(f'Page number: {number}')
-        task = await xls.get_links(url=URL, next_page=NEXT_PAGE_URL, page_number=number, start_date=date(year=2023, month=1, day=1), end_date=date.today())
+        task = await xls.get_links(url=URL, next_page_url=NEXT_PAGE_URL, page_number=number, start_date=date(year=2023, month=1, day=1), end_date=date.today())
         yield task
     
 
@@ -52,7 +52,7 @@ async def main():
     async with aiohttp.ClientSession() as session:
         xls = AsyncXlsParserService(ParserPageLinks(), session)
         async for finished_page in gen_page_links(xls, PAGE_COUNTS):
-            
+
             if not finished_page:
                 break
             try:

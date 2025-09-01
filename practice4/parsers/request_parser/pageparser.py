@@ -96,9 +96,9 @@ class AsyncXlsParserService(BaseHtmlParserService):
 
     async def get_html(self,
                        url: str,
-                       next_page: str = None,
+                       next_page_url: str = None,
                        page_number: int = None,) -> str:
-        absolute_url = f'{url}{next_page}{page_number}'
+        absolute_url = f'{url}{next_page_url}{page_number}'
         async with self.session.get(absolute_url) as response:
             response.raise_for_status()
             html = await response.text()
@@ -107,13 +107,13 @@ class AsyncXlsParserService(BaseHtmlParserService):
 
     async def get_links(self,
                         url: str,
-                        next_page: str | None = None,
+                        next_page_url: str | None = None,
                         page_number: int | None = None,
                         start_date: Optional[date] = None,
                         end_date: Optional[date] = None) -> list[tuple[str, date]]:
         try:
             html = await self.get_html(url,
-                                       next_page,
+                                       next_page_url,
                                        page_number)
             if html:
                 result = self.parser.parse_page(html,
