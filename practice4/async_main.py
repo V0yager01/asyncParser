@@ -40,22 +40,21 @@ def create_shemas(parsed_xls) -> list[TradingShema]:
 
 async def gen_page_links(xls, page_number):
     for number in range(1, page_number+1):
+        print(f'Page number: {number}')
         task = await xls.get_links(url=URL, next_page=NEXT_PAGE_URL, page_number=number, start_date=date(year=2023, month=1, day=1), end_date=date.today())
         yield task
     
 
 async def main():
     db_tasks = []
-    links_tasks = []
 
     db_unit = TradingDao(model=Trading)
     async with aiohttp.ClientSession() as session:
         xls = AsyncXlsParserService(ParserPageLinks(), session)
-        for page_number in range(1, PAGE_COUNTS+1):
-            links_tasks.append(asyncio.create_task(xls.get_links(url=URL, next_page=NEXT_PAGE_URL, page_number=page_number, start_date=date(year=2023, month=1, day=1), end_date=date.today())))
-
-        async for page in asyncio.as_completed(links_tasks):
-            finished_page = await page
+        async for finished_page in gen_page_links(xls, PAGE_COUNTS):
+            
+            if not finished_page:
+                break
             try:
                 xls_bytes = [] 
                 for link in finished_page:

@@ -107,8 +107,8 @@ class AsyncXlsParserService(BaseHtmlParserService):
 
     async def get_links(self,
                         url: str,
-                        next_page: str = None,
-                        page_number: int = None,
+                        next_page: str | None = None,
+                        page_number: int | None = None,
                         start_date: Optional[date] = None,
                         end_date: Optional[date] = None) -> list[tuple[str, date]]:
         try:
