@@ -100,6 +100,7 @@ class AsyncXlsParserService(BaseHtmlParserService):
                        page_number: int = None,) -> str:
         absolute_url = f'{url}{next_page}{page_number}'
         async with self.session.get(absolute_url) as response:
+            response.raise_for_status()
             html = await response.text()
             return html
         return None

@@ -2,8 +2,7 @@ import aiohttp
 from time import time
 import asyncio 
 
-from datetime import datetime
-
+from datetime import datetime, date
 from database.shemas import TradingShema
 from database.dao import TradingDao
 from database.model import Trading
@@ -11,7 +10,6 @@ from parsers.request_parser.pageparser import AsyncXlsParserService, ParserPageL
 from parsers.xls_parser import pandas_module
 from parsers.async_load_xls import load_xls_bytes
 from const import URL, NEXT_PAGE_URL, PAGE_COUNTS
-
 
 def create_shemas(parsed_xls) -> list[TradingShema]:
     to_db = []
@@ -40,36 +38,37 @@ def create_shemas(parsed_xls) -> list[TradingShema]:
     else:
         return to_db
 
+async def gen_page_links(xls, page_number):
+    for number in range(1, page_number+1):
+        task = await xls.get_links(url=URL, next_page=NEXT_PAGE_URL, page_number=number, start_date=date(year=2023, month=1, day=1), end_date=date.today())
+        yield task
+    
 
 async def main():
+    db_tasks = []
+    links_tasks = []
+
     db_unit = TradingDao(model=Trading)
     async with aiohttp.ClientSession() as session:
-        tasks = []
         xls = AsyncXlsParserService(ParserPageLinks(), session)
-        for number in range(1, PAGE_COUNTS+1):
-            # Создаем задачи на получение ссылок из html страницы
-            tasks.append(asyncio.create_task(xls.get_links(url=URL,
-                                                           next_page=NEXT_PAGE_URL,
-                                                           page_number=number)))
-        for finished_page in asyncio.as_completed(tasks):
+        for page_number in range(1, PAGE_COUNTS+1):
+            links_tasks.append(asyncio.create_task(xls.get_links(url=URL, next_page=NEXT_PAGE_URL, page_number=page_number, start_date=date(year=2023, month=1, day=1), end_date=date.today())))
+
+        async for page in asyncio.as_completed(links_tasks):
+            finished_page = await page
             try:
-                page = await finished_page
-                xls_bytes = []
-                for link in page:
-                    # Создаем задачи на загрузку xls таблиц
+                xls_bytes = [] 
+                for link in finished_page:
                     xls_bytes.append(asyncio.create_task(load_xls_bytes(link[0], session)))
                 for loaded_xls in asyncio.as_completed(xls_bytes):
                     xls = await loaded_xls
-                    # Парсим таблицу
                     parsed_xls = pandas_module.parse_xls(xls)
-                    # Создаем схему для бд
-                    to_db = create_shemas(parsed_xls)
-                    # Добавление в бд
-                    await db_unit.insert_all_data(to_db)
+                    res = create_shemas(parsed_xls)
+                    db_tasks.append(asyncio.create_task(db_unit.insert_all_data(res)))
             except Exception as e:
-                print(f'Exception. Page: {page}, {e}')
-                break
-
+                print(f'Exception. Page: {finished_page}, {e}')
+        await asyncio.gather(*db_tasks)
+    
 if __name__ == '__main__':
     start = time()
     asyncio.run(main())
